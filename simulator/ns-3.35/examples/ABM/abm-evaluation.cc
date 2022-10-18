@@ -37,6 +37,7 @@
 # define CS 103
 # define IB 104
 # define ABM 110
+# define RLB 120
 
 
 /*Congestion Control Algorithms*/
@@ -754,6 +755,17 @@ main (int argc, char *argv[])
 				genDisc->SetBufferAlgorithm(FAB);
 				genDisc->SetFabWindow(MicroSeconds(5000));
 				genDisc->SetFabThreshold(15 * PACKET_SIZE);
+				for (uint32_t n = 0; n < nPrior; n++) {
+					genDisc->alphas[n] = alpha_values[n];
+				}
+				break;
+			case RLB:
+				genDisc->setNPrior(nPrior); // IMPORTANT. This will also trigger "alphas = new ..."
+				genDisc->setPortBw(leafServerCapacity);
+				genDisc->SetSharedMemory(sharedMemoryLeaf[leaf]);
+				genDisc->SetBufferAlgorithm(RLB);
+				// genDisc->SetFabWindow(MicroSeconds(5000));
+				// genDisc->SetFabThreshold(15 * PACKET_SIZE);
 				for (uint32_t n = 0; n < nPrior; n++) {
 					genDisc->alphas[n] = alpha_values[n];
 				}

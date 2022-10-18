@@ -307,6 +307,10 @@ bool GenQueueDisc::FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet){
 
 }
 
+bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
+  return true;
+}
+
 bool GenQueueDisc::CompleteSharing(uint32_t priority, Ptr<Packet> packet){
   if(sharedMemory->GetRemainingBuffer() < packet->GetSize()){
     return false;// drop
@@ -404,6 +408,9 @@ bool GenQueueDisc::AcceptPacket(uint32_t priority, Ptr<Packet> packet){
       break;
     case FAB:
       accept = FlowAwareBuffer(priority,packet);
+      break;
+    case RLB:
+      accept = RLBuffer(priority, packet);
       break;
     case CS:
       accept = CompleteSharing(priority,packet);
