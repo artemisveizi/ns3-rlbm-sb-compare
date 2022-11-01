@@ -99,7 +99,7 @@ public:
   bool ActiveBufferManagement(uint32_t priority, Ptr<Packet> packet);
 
   bool FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet);
-
+  bool RLBuffer(uint32_t priority, Ptr<Packet> packet);
   bool CompleteSharing(uint32_t priority, Ptr<Packet> packet);
 
   int DropAfd(double prob,uint32_t priority);

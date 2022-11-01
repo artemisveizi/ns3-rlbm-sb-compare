@@ -41,6 +41,7 @@
 # define CS 103
 # define IB 104
 # define ABM 110
+# define RLB 111
 
 namespace ns3 {
 
@@ -140,9 +141,9 @@ GenQueueDisc::GetThroughputEnQueue(uint32_t p, double nanodelay){
   return th;
 }
 
-
+int RLBuffer_test_time = 0;
 bool GenQueueDisc::DynamicThresholds(uint32_t priority, Ptr<Packet> packet){
-  
+  // printf("now in DT controlling function\n");
   double remaining = sharedMemory->GetRemainingBuffer();
   uint64_t maxSize = alphas[priority]*remaining;
   if (maxSize> UINT32_MAX)
@@ -203,7 +204,26 @@ void GenQueueDisc::InvokeUpdates(double nanodelay){
 }
 
 bool GenQueueDisc::ActiveBufferManagement(uint32_t priority, Ptr<Packet> packet){
-
+  if (RLBuffer_test_time < 10)
+  {
+    std::cout << "alpha:";
+    for (int i = 0; i < 11; i++)
+    {
+      std::cout << " " << alphas[i];
+    }
+    std::cout << "\nnumber of congested queues for each priority:";
+    for (int i = 0; i < 11; i++)
+    {
+      std::cout << " " << nofP[i];
+    }
+    std::cout << "\n dequeue rate:";
+    for (int i = 0; i < 11; i++)
+    {
+      std::cout << " " << DeqRate[i];
+    }
+    std::cout << std::endl;
+  }
+  RLBuffer_test_time++;
   double alpha = 1;
 
   /* A tag is attached by the end-hosts on all the packets which are unscheduled (first RTT bytes). Find the tag first.*/
@@ -307,7 +327,26 @@ bool GenQueueDisc::FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet){
 
 }
 
+
 bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
+  if(RLBuffer_test_time%10000==0){
+  std::cout << "alpha:";
+  for (int i = 0; i < 11; i++)
+  {
+    std::cout << " " << alphas[i];
+  }
+  std::cout << "\nnumber of congested queues for each priority:";
+  for (int i = 0; i < 11; i++)
+  {
+    std::cout<<" "<<nofP[i];
+  }
+  std::cout << "\n dequeue rate:" << DeqRate[priority] << std::endl;
+  
+  
+  }
+  RLBuffer_test_time++;
+  if(RLBuffer_test_time%2)
+    return false;
   return true;
 }
 

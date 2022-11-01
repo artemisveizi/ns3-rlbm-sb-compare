@@ -8,6 +8,7 @@ FAB=102
 CS=103
 IB=104
 ABM=110
+RLB=111
 
 RENO=0
 CUBIC=1
@@ -78,10 +79,10 @@ BURST_SIZE=$(python3 -c "print($BURST_SIZES*$BUFFER)")
 # Using Cubic and DCTCP, at 40% websearch load and incast workload at Burst size of 25% of initial buffer size and request rate = 2
 ###############################################################
 
-for BUFFER_PER_PORT_PER_GBPS in 9.6 8 7 6 5.12 3.44;do
+for BUFFER_PER_PORT_PER_GBPS in 9.6;do
 	BUFFER=$(python3 -c "print(int($BUFFER_PER_PORT_PER_GBPS*1024*($SERVERS+$LINKS*$SPINES)*$SERVER_LEAF_CAP))")
-	for ALG in $DT $ABM $IB;do
-		for TCP in ${TCP_ALGS[@]};do
+	for ALG in $ABM ;do
+		for TCP in $CUBIC;do
 			FLOW_END_TIME=13 #$(python3 -c "print(10+3*0.8/$LOAD)")
 			while [[ $(( $(ps aux | grep evaluation-multi-optimized | wc -l)+$(ps aux | grep evaluation-optimized | wc -l) )) -gt $N_CORES ]];do
 				sleep 30;
@@ -95,3 +96,21 @@ for BUFFER_PER_PORT_PER_GBPS in 9.6 8 7 6 5.12 3.44;do
 		done
 	done
 done
+
+# for BUFFER_PER_PORT_PER_GBPS in 9.6 8 7 6 5.12 3.44;do
+# 	BUFFER=$(python3 -c "print(int($BUFFER_PER_PORT_PER_GBPS*1024*($SERVERS+$LINKS*$SPINES)*$SERVER_LEAF_CAP))")
+# 	for ALG in $DT $ABM $IB;do
+# 		for TCP in ${TCP_ALGS[@]};do
+# 			FLOW_END_TIME=13 #$(python3 -c "print(10+3*0.8/$LOAD)")
+# 			while [[ $(( $(ps aux | grep evaluation-multi-optimized | wc -l)+$(ps aux | grep evaluation-optimized | wc -l) )) -gt $N_CORES ]];do
+# 				sleep 30;
+# 				echo "waiting for cores, $N running..."
+# 			done
+# 			FLOWFILE="$DUMP_DIR/fcts-buffer-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.fct"
+# 			TORFILE="$DUMP_DIR/tor-buffer-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.stat"
+# 			N=$(( $N+1 ))
+# 			(time ./waf --run "abm-evaluation --load=$LOAD --StartTime=$START_TIME --EndTime=$END_TIME --FlowLaunchEndTime=$FLOW_END_TIME --serverCount=$SERVERS --spineCount=$SPINES --leafCount=$LEAVES --linkCount=$LINKS --spineLeafCapacity=$LEAF_SPINE_CAP --leafServerCapacity=$SERVER_LEAF_CAP --linkLatency=$LATENCY --TcpProt=$TCP --BufferSize=$BUFFER --statBuf=$STATIC_BUFFER --algorithm=$ALG --RedMinTh=$RED_MIN --RedMaxTh=$RED_MAX --request=$BURST_SIZE --queryRequestRate=$BURST_FREQ --nPrior=$N_PRIO --alphasFile=$ALPHAFILE --cdfFileName=$CDFFILE --alphaUpdateInterval=$ALPHA_UPDATE_INT --fctOutFile=$FLOWFILE --torOutFile=$TORFILE" ; echo "$FLOWFILE")&
+# 			sleep 10
+# 		done
+# 	done
+# done
