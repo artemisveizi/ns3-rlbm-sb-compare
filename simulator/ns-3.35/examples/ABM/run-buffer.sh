@@ -1,6 +1,6 @@
 source config.sh
 DIR="$NS3/examples/ABM"
-DUMP_DIR="$DIR/dump_sigcomm"
+DUMP_DIR="$DIR/dump_test"
 mkdir $DUMP_DIR
 
 DT=101
@@ -64,7 +64,7 @@ LATENCY=10
 #5
 LOAD=0.4
 TCP_ALGS=($DCTCP $POWERTCP)
-N_PRIO=2
+N_PRIO=3
 BURST_FREQ=2
 ALPHA_UPDATE_INT=1
 
@@ -81,7 +81,7 @@ BURST_SIZE=$(python3 -c "print($BURST_SIZES*$BUFFER)")
 
 for BUFFER_PER_PORT_PER_GBPS in 9.6;do
 	BUFFER=$(python3 -c "print(int($BUFFER_PER_PORT_PER_GBPS*1024*($SERVERS+$LINKS*$SPINES)*$SERVER_LEAF_CAP))")
-	for ALG in $ABM ;do
+	for ALG in $RLB ;do
 		for TCP in $CUBIC;do
 			FLOW_END_TIME=13 #$(python3 -c "print(10+3*0.8/$LOAD)")
 			while [[ $(( $(ps aux | grep evaluation-multi-optimized | wc -l)+$(ps aux | grep evaluation-optimized | wc -l) )) -gt $N_CORES ]];do
@@ -91,7 +91,7 @@ for BUFFER_PER_PORT_PER_GBPS in 9.6;do
 			FLOWFILE="$DUMP_DIR/fcts-buffer-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.fct"
 			TORFILE="$DUMP_DIR/tor-buffer-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.stat"
 			N=$(( $N+1 ))
-			(time ./waf --run "abm-evaluation --load=$LOAD --StartTime=$START_TIME --EndTime=$END_TIME --FlowLaunchEndTime=$FLOW_END_TIME --serverCount=$SERVERS --spineCount=$SPINES --leafCount=$LEAVES --linkCount=$LINKS --spineLeafCapacity=$LEAF_SPINE_CAP --leafServerCapacity=$SERVER_LEAF_CAP --linkLatency=$LATENCY --TcpProt=$TCP --BufferSize=$BUFFER --statBuf=$STATIC_BUFFER --algorithm=$ALG --RedMinTh=$RED_MIN --RedMaxTh=$RED_MAX --request=$BURST_SIZE --queryRequestRate=$BURST_FREQ --nPrior=$N_PRIO --alphasFile=$ALPHAFILE --cdfFileName=$CDFFILE --alphaUpdateInterval=$ALPHA_UPDATE_INT --fctOutFile=$FLOWFILE --torOutFile=$TORFILE" ; echo "$FLOWFILE")&
+			(time ./waf --run "abm-evaluation --load=$LOAD --StartTime=$START_TIME --EndTime=$END_TIME --FlowLaunchEndTime=$FLOW_END_TIME --serverCount=$SERVERS --spineCount=$SPINES --leafCount=$LEAVES --linkCount=$LINKS --spineLeafCapacity=$LEAF_SPINE_CAP --leafServerCapacity=$SERVER_LEAF_CAP --linkLatency=$LATENCY --TcpProt=$TCP --BufferSize=$BUFFER --statBuf=$STATIC_BUFFER --algorithm=$ALG --RedMinTh=$RED_MIN --RedMaxTh=$RED_MAX --request=$BURST_SIZE --queryRequestRate=$BURST_FREQ --nPrior=$N_PRIO --alphasFile=$ALPHAFILE --cdfFileName=$CDFFILE --alphaUpdateInterval=$ALPHA_UPDATE_INT --fctOutFile=$FLOWFILE --torOutFile=$TORFILE" ; echo "$FLOWFILE")
 			sleep 10
 		done
 	done

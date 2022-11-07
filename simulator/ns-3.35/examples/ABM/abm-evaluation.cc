@@ -37,7 +37,7 @@
 # define CS 103
 # define IB 104
 # define ABM 110
-# define RLB 120
+# define RLB 111
 
 
 /*Congestion Control Algorithms*/
@@ -339,7 +339,9 @@ main (int argc, char *argv[])
 	uint32_t LEAF_COUNT = 2;
 	uint32_t LINK_COUNT = 4;
 	uint64_t spineLeafCapacity = 10; //Gbps
-	uint64_t leafServerCapacity = 10; //Gbps
+	uint64_t leafServerCapacity = 10; //Gbps //BW, if increase, also increase the buffer 
+	//also change the load 
+	//burst 
 	double linkLatency = 10;
 	cmd.AddValue ("serverCount", "The Server count", SERVER_COUNT);
 	cmd.AddValue ("spineCount", "The Spine count", SPINE_COUNT);
@@ -891,6 +893,15 @@ main (int argc, char *argv[])
 						genDisc[i]->setPortBw(leafServerCapacity);
 						genDisc[i]->SetSharedMemory(sharedMemoryLeaf[leaf]);
 						genDisc[i]->SetBufferAlgorithm(ABM);
+						for (uint32_t n = 0; n < nPrior; n++) {
+							genDisc[i]->alphas[n] = alpha_values[n];
+						}
+						break;
+					case RLB:
+						genDisc[i]->setNPrior(nPrior); // IMPORTANT. This will also trigger "alphas = new ..."
+						genDisc[i]->setPortBw(leafServerCapacity);
+						genDisc[i]->SetSharedMemory(sharedMemoryLeaf[leaf]);
+						genDisc[i]->SetBufferAlgorithm(RLB);
 						for (uint32_t n = 0; n < nPrior; n++) {
 							genDisc[i]->alphas[n] = alpha_values[n];
 						}
