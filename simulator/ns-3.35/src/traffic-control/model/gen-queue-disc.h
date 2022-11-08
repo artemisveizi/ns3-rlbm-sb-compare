@@ -99,6 +99,9 @@ public:
   bool ActiveBufferManagement(uint32_t priority, Ptr<Packet> packet);
 
   bool FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet);
+  void RL_calculate_alphas(double*);
+  void UpdateAlphas(double* new_alphas);
+  void InvokeUpdates_RLB(double nanodelay);
   bool RLBuffer(uint32_t priority, Ptr<Packet> packet);
   bool CompleteSharing(uint32_t priority, Ptr<Packet> packet);
 

@@ -92,24 +92,58 @@ T rand_range (T min, T max)
 
 double baseRTTNano;
 double nicBw;
-void TraceMsgFinish (Ptr<OutputStreamWrapper> stream, double size, double start, bool incast, uint32_t prior )
+// void TraceMsgFinish (Ptr<OutputStreamWrapper> stream, double size, double start, bool incast, uint32_t prior )
+// {
+// 	double fct, standalone_fct, slowdown;
+// 	fct = Simulator::Now().GetNanoSeconds() - start;
+// 	standalone_fct = baseRTTNano + size * 8.0 / nicBw;
+// 	slowdown = fct / standalone_fct;
+
+// 	*stream->GetStream ()
+// 	        << Simulator::Now().GetSeconds()
+// 	        << " " << size
+// 	        << " " << fct
+// 	        << " " << standalone_fct
+// 	        << " " << slowdown
+// 	        << " " << baseRTTNano / 1e3
+// 	        << " " << (start / 1e3 - Seconds(10).GetMicroSeconds())
+// 	        << " " << prior
+// 	        << " " << incast
+// 	        << std::endl;
+// }
+
+
+//test for getting trace msg as pointer 
+struct fct_struct {
+	double time;
+	double size;
+	double fct;
+	double standalone_fct;
+	double slowdown;
+	double basertt;
+	double flowstart;
+	uint32_t priority;
+	bool incast;
+};
+
+struct fct_struct * fct_ptr;
+
+void TraceMsgFinish (struct fct_struct * fct_ptr, double size, double start, bool incast, uint32_t prior )
 {
 	double fct, standalone_fct, slowdown;
 	fct = Simulator::Now().GetNanoSeconds() - start;
 	standalone_fct = baseRTTNano + size * 8.0 / nicBw;
 	slowdown = fct / standalone_fct;
-
-	*stream->GetStream ()
-	        << Simulator::Now().GetSeconds()
-	        << " " << size
-	        << " " << fct
-	        << " " << standalone_fct
-	        << " " << slowdown
-	        << " " << baseRTTNano / 1e3
-	        << " " << (start / 1e3 - Seconds(10).GetMicroSeconds())
-	        << " " << prior
-	        << " " << incast
-	        << std::endl;
+	fct_ptr->time = Simulator::Now().GetSeconds();
+	fct_ptr->size = size;
+	fct_ptr->fct = fct;
+	fct_ptr->standalone_fct = standalone_fct;
+	fct_ptr->slowdown = slowdown;
+	fct_ptr->basertt = baseRTTNano / 1e3;
+	fct_ptr->flowstart = (start / 1e3 - Seconds(10).GetMicroSeconds());
+	fct_ptr->priority = prior;
+	fct_ptr->incast = incast;
+	printf("fct: %lf\n", fct_ptr->fct);
 }
 
 void
@@ -235,7 +269,8 @@ void install_applications_incast (int incastLeaf, NodeContainer* servers, double
 				flowCount += 1;
 				sinkApp.Start (startApp);
 				sinkApp.Stop (Seconds (END_TIME));
-				sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fctOutput));
+				sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fct_ptr));
+				// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, fct_ptr));
 			}
 			startTime += poission_gen_interval (requestRate);
 		}
@@ -307,7 +342,8 @@ void install_applications (int txLeaf, NodeContainer* servers, double requestRat
 			flowCount += 1;
 			sinkApp.Start (Seconds(startTime));
 			sinkApp.Stop (Seconds (END_TIME));
-			sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fctOutput));
+			sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fct_ptr));
+			// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, fct_ptr));
 			startTime += poission_gen_interval (requestRate);
 		}
 	}
@@ -424,6 +460,8 @@ main (int argc, char *argv[])
 	        << "priority "
 	        << "incast "
 	        << std::endl;
+
+	fct_ptr = new fct_struct{};
 
 	torStats = torTraceHelper.CreateFileStream (torOutFile);
 

@@ -36,6 +36,8 @@
 #include "ns3/unsched-tag.h"
 #include "ns3/feedback-tag.h"
 
+#include "rlbuffer-queue-disc.h"
+
 # define DT 101
 # define FAB 102
 # define CS 103
@@ -141,9 +143,7 @@ GenQueueDisc::GetThroughputEnQueue(uint32_t p, double nanodelay){
   return th;
 }
 
-int RLBuffer_test_time = 0;
 bool GenQueueDisc::DynamicThresholds(uint32_t priority, Ptr<Packet> packet){
-  // printf("now in DT controlling function\n");
   double remaining = sharedMemory->GetRemainingBuffer();
   uint64_t maxSize = alphas[priority]*remaining;
   if (maxSize> UINT32_MAX)
@@ -204,26 +204,7 @@ void GenQueueDisc::InvokeUpdates(double nanodelay){
 }
 
 bool GenQueueDisc::ActiveBufferManagement(uint32_t priority, Ptr<Packet> packet){
-  if (RLBuffer_test_time < 10)
-  {
-    std::cout << "alpha:";
-    for (int i = 0; i < 11; i++)
-    {
-      std::cout << " " << alphas[i];
-    }
-    std::cout << "\nnumber of congested queues for each priority:";
-    for (int i = 0; i < 11; i++)
-    {
-      std::cout << " " << nofP[i];
-    }
-    std::cout << "\n dequeue rate:";
-    for (int i = 0; i < 11; i++)
-    {
-      std::cout << " " << DeqRate[i];
-    }
-    std::cout << std::endl;
-  }
-  RLBuffer_test_time++;
+
   double alpha = 1;
 
   /* A tag is attached by the end-hosts on all the packets which are unscheduled (first RTT bytes). Find the tag first.*/
@@ -327,27 +308,104 @@ bool GenQueueDisc::FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet){
 
 }
 
+void GenQueueDisc::RL_calculate_alphas(double* new_alphas){
+  //random
+  for (uint32_t i=0; i< nPrior; i++){
+    new_alphas[i] = (double)std::rand()/(double)RAND_MAX;
+  }
+}
 
+void GenQueueDisc::UpdateAlphas(double* new_alphas){
+  for (uint32_t i=0; i< nPrior; i++){
+    alphas[i] = new_alphas[i];
+  }
+}
+
+void GenQueueDisc::InvokeUpdates_RLB(double nanodelay){
+  UpdateDequeueRate(nanodelay);
+  UpdateNofP();
+  double* new_alphas = (double*)malloc(sizeof(double)*nPrior);
+  RL_calculate_alphas(new_alphas);
+  UpdateAlphas(new_alphas);
+  free(new_alphas);
+  Simulator::Schedule(NanoSeconds(nanodelay),&GenQueueDisc::InvokeUpdates_RLB,this,nanodelay);
+}
+
+int RLBuffer_test_time = 0;
 bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
-  if(RLBuffer_test_time%10000==0){
-  std::cout << "alpha:";
-  for (int i = 0; i < 11; i++)
+  if (RLBuffer_test_time %50000 == 0)
   {
-    std::cout << " " << alphas[i];
-  }
-  std::cout << "\nnumber of congested queues for each priority:";
-  for (int i = 0; i < 11; i++)
-  {
-    std::cout<<" "<<nofP[i];
-  }
-  std::cout << "\n dequeue rate:" << DeqRate[priority] << std::endl;
-  
-  
+    std::cout << "alpha:";
+    for (int i = 0; i < nPrior; i++)
+    {
+      std::cout << " " << alphas[i];
+    }
+    std::cout << "\nnumber of congested queues for each priority:";
+    for (int i = 0; i < nPrior; i++)
+    {
+      std::cout << " " << nofP[i];
+    }
+    std::cout << "\n dequeue rate:";
+    for (int i = 0; i < nPrior; i++)
+    {
+      std::cout << " " << DeqRate[i];
+    }
+    std::cout << std::endl;
   }
   RLBuffer_test_time++;
-  if(RLBuffer_test_time%2)
-    return false;
-  return true;
+
+  double alpha = 1;
+
+  /* A tag is attached by the end-hosts on all the packets which are unscheduled (first RTT bytes). Find the tag first.*/
+  bool found;
+  uint32_t unsched = 0;
+  UnSchedTag tag;
+  found = packet->PeekPacketTag (tag);
+  if(found){
+    unsched=tag.GetValue();
+  }
+
+  /* prioritize unscheduled packets */
+  if (unsched){
+    alpha = alphaUnsched;
+  }
+  else{
+    alpha = alphas[priority];
+  }
+
+  uint64_t currentSize=GetQueueDiscClass (priority)->GetQueueDisc ()->GetNBytes();
+
+  double satLevel = double(currentSize)/sat; 
+  if (satLevel>1){
+    satLevel=1;
+  }
+
+
+  sharedMemory->setSaturated(portId,priority,satLevel);
+  
+  if (firstTimeUpdate){
+    firstTimeUpdate=false;
+    InvokeUpdates_RLB(updateInterval);
+  }
+
+  double remaining = sharedMemory->GetRemainingBuffer();
+  // std::cout << "alpha " << alpha << " n " << nofP[priority] << " deq " << DeqRate[priority] << std::endl;
+  uint64_t maxSize = double(alpha*(remaining)/nofP[priority])*DeqRate[priority];
+
+  if (maxSize> UINT32_MAX)
+    maxSize = UINT32_MAX-1500;
+
+  uint32_t qSize = GetQueueDiscClass (priority)->GetQueueDisc ()->GetNBytes();
+  if ( ((qSize + packet->GetSize()) >  maxSize) || (sharedMemory->GetRemainingBuffer() < packet->GetSize())  ){
+    return false; // drop
+  }
+  else{
+    return true;
+  }
+
+  // if(RLBuffer_test_time%2)
+  //   return false;
+  // return true;
 }
 
 bool GenQueueDisc::CompleteSharing(uint32_t priority, Ptr<Packet> packet){
