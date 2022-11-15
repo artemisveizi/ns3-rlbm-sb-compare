@@ -125,9 +125,9 @@ void TraceMsgFinish (struct RL_input_struct * RL_input_inmsg, double size, doubl
 	RL_input_inmsg->time = Simulator::Now().GetSeconds();
 	RL_input_inmsg->size = size;
 	RL_input_inmsg->fct = fct;
-	RL_input_inmsg->standalone_fct = standalone_fct;
+	// RL_input_inmsg->standalone_fct = standalone_fct;
 	RL_input_inmsg->slowdown = slowdown;
-	RL_input_inmsg->basertt = baseRTTNano / 1e3;
+	// RL_input_inmsg->basertt = baseRTTNano / 1e3;
 	RL_input_inmsg->flowstart = (start / 1e3 - Seconds(10).GetMicroSeconds());
 	RL_input_inmsg->priority = prior;
 	RL_input_inmsg->incast = incast;
@@ -933,6 +933,8 @@ main (int argc, char *argv[])
 						for (uint32_t n = 0; n < nPrior; n++) {
 							genDisc[i]->alphas[n] = alpha_values[n];
 						}
+						//add inputs for RL 
+						genDisc[i]->RL_input = RL_input;
 						break;
 					default:
 						std::cout << "Error in buffer management configuration. Exiting!";

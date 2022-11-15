@@ -30,15 +30,15 @@
 
 //test for getting trace msg as pointer 
 struct RL_input_struct {
-	double time;
-	double size;
-	double fct;
-	double standalone_fct;
-	double slowdown;
-	double basertt;
-	double flowstart;
-	uint32_t priority;
-	bool incast;
+	double time = 0;
+	double size = 0;
+	double fct = 0;
+	// double standalone_fct = 0;
+	double slowdown = 0;
+	// double basertt = 0;
+	double flowstart = 0;
+	uint32_t priority = 0;
+	bool incast = 0;
 };
 
 namespace ns3 {
