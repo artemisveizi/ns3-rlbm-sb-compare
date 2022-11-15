@@ -27,6 +27,7 @@
 #include "ns3/fq-pie-queue-disc.h"
 #include "ns3/fq-codel-queue-disc.h"
 #include "ns3/shared-memory.h"
+#include "../src/traffic-control/model/gen-queue-disc.h"
 
 # define PACKET_SIZE 1400
 # define GIGA 1000000000
@@ -113,37 +114,24 @@ double nicBw;
 // }
 
 
-//test for getting trace msg as pointer 
-struct fct_struct {
-	double time;
-	double size;
-	double fct;
-	double standalone_fct;
-	double slowdown;
-	double basertt;
-	double flowstart;
-	uint32_t priority;
-	bool incast;
-};
+struct RL_input_struct * RL_input;
 
-struct fct_struct * fct_ptr;
-
-void TraceMsgFinish (struct fct_struct * fct_ptr, double size, double start, bool incast, uint32_t prior )
+void TraceMsgFinish (struct RL_input_struct * RL_input_inmsg, double size, double start, bool incast, uint32_t prior )
 {
 	double fct, standalone_fct, slowdown;
 	fct = Simulator::Now().GetNanoSeconds() - start;
 	standalone_fct = baseRTTNano + size * 8.0 / nicBw;
 	slowdown = fct / standalone_fct;
-	fct_ptr->time = Simulator::Now().GetSeconds();
-	fct_ptr->size = size;
-	fct_ptr->fct = fct;
-	fct_ptr->standalone_fct = standalone_fct;
-	fct_ptr->slowdown = slowdown;
-	fct_ptr->basertt = baseRTTNano / 1e3;
-	fct_ptr->flowstart = (start / 1e3 - Seconds(10).GetMicroSeconds());
-	fct_ptr->priority = prior;
-	fct_ptr->incast = incast;
-	printf("fct: %lf\n", fct_ptr->fct);
+	RL_input_inmsg->time = Simulator::Now().GetSeconds();
+	RL_input_inmsg->size = size;
+	RL_input_inmsg->fct = fct;
+	RL_input_inmsg->standalone_fct = standalone_fct;
+	RL_input_inmsg->slowdown = slowdown;
+	RL_input_inmsg->basertt = baseRTTNano / 1e3;
+	RL_input_inmsg->flowstart = (start / 1e3 - Seconds(10).GetMicroSeconds());
+	RL_input_inmsg->priority = prior;
+	RL_input_inmsg->incast = incast;
+	printf("fct: %lf\n", RL_input_inmsg->fct);
 }
 
 void
@@ -269,8 +257,8 @@ void install_applications_incast (int incastLeaf, NodeContainer* servers, double
 				flowCount += 1;
 				sinkApp.Start (startApp);
 				sinkApp.Stop (Seconds (END_TIME));
-				sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fct_ptr));
-				// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, fct_ptr));
+				sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, RL_input));
+				// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, RL_input));
 			}
 			startTime += poission_gen_interval (requestRate);
 		}
@@ -342,8 +330,8 @@ void install_applications (int txLeaf, NodeContainer* servers, double requestRat
 			flowCount += 1;
 			sinkApp.Start (Seconds(startTime));
 			sinkApp.Stop (Seconds (END_TIME));
-			sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fct_ptr));
-			// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, fct_ptr));
+			sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, RL_input));
+			// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, RL_input));
 			startTime += poission_gen_interval (requestRate);
 		}
 	}
@@ -461,7 +449,7 @@ main (int argc, char *argv[])
 	        << "incast "
 	        << std::endl;
 
-	fct_ptr = new fct_struct{};
+	RL_input = new RL_input_struct{};
 
 	torStats = torTraceHelper.CreateFileStream (torOutFile);
 
@@ -809,6 +797,8 @@ main (int argc, char *argv[])
 				for (uint32_t n = 0; n < nPrior; n++) {
 					genDisc->alphas[n] = alpha_values[n];
 				}
+				//add inputs for RL 
+				genDisc->RL_input = RL_input;
 				break;
 			case CS:
 				genDisc->setNPrior(nPrior); // IMPORTANT. This will also trigger "alphas = new ..."

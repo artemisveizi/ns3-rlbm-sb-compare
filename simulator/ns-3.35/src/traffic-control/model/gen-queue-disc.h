@@ -28,6 +28,19 @@
 #include "ns3/simulator.h"
 #include "shared-memory.h"
 
+//test for getting trace msg as pointer 
+struct RL_input_struct {
+	double time;
+	double size;
+	double fct;
+	double standalone_fct;
+	double slowdown;
+	double basertt;
+	double flowstart;
+	uint32_t priority;
+	bool incast;
+};
+
 namespace ns3 {
 
 class GenQueueDisc : public QueueDisc {
@@ -69,7 +82,7 @@ public:
      alphas = new double[nPrior];
   }
   double *alphas;
-
+  struct RL_input_struct * RL_input;
 
   uint32_t getNPrior() {
     return nPrior;
