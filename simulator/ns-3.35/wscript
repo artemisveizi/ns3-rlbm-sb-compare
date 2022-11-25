@@ -568,7 +568,10 @@ def configure(conf):
     # Waf does not work correctly if the absolute path contains whitespaces
     if (re.search(r"\s", os.getcwd ())):
         conf.fatal('Waf does not support whitespace in the path to current working directory: %s' % os.getcwd())
-
+    frontpath='/repo/reinforcement-learning-for-per-flow-buffer-sizing/'
+    conf.env.append_value('INCLUDES', [frontpath+"libtorch/include", frontpath+"libtorch/include/torch/csrc/api/include"])
+    conf.env.append_value('LINKFLAGS', ["-L"+frontpath+"libtorch/lib", "-ltorch", "-ltorch_cpu", "-lc10"])
+    conf.env.append_value('CXXFLAGS', ['-D_GLIBCXX_USE_CXX11_ABI=0'])
     conf.load('relocation', tooldir=['waf-tools'])
 
     # attach some extra methods
