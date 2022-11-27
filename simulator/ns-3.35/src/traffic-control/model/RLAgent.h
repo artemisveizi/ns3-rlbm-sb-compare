@@ -12,9 +12,9 @@ class RLagent{
         ActorCritic ac;
         torch::optim::Adam opt;
 
-        uint n_iter = 10000;
+        // uint n_iter = 10000;
         uint n_steps = 2048;
-        uint n_epochs = 15;
+        // uint n_epochs = 15;
         uint mini_batch_size = 512;
         uint ppo_epochs = 4;
         double beta = 1e-3;
@@ -32,8 +32,8 @@ class RLagent{
         uint c = 0;
 
         // Average reward.
-        double best_avg_reward = 0.;
-        double avg_reward = 0.;
+        // double best_avg_reward = 0.;
+        // double avg_reward = 0.;
 
         RLagent(uint n_in, uint n_out, double std) : ac(n_in, n_out, std), opt(ac->parameters(), 1e-3)
         {
@@ -41,10 +41,10 @@ class RLagent{
             ac->normal(0., std);
         }
 
-        torch::Tensor get_actions(torch::Tensor env_state,double* alphas){
-            states.push_back(env_state);
-
-            auto av = ac->forward(states[c]);
+        torch::Tensor RLAgent_act(torch::Tensor state)
+        {
+            states.push_back(state);
+            auto av = ac->forward(state);
             actions.push_back(std::get<0>(av));
             values.push_back(std::get<1>(av));
             log_probs.push_back(ac->log_prob(actions[c]));
@@ -52,10 +52,10 @@ class RLagent{
             return actions[c];
         }
 
-        void update_network(double reward){
+        void RLAgent_update(torch::Tensor reward)
+        {
             rewards.push_back(reward);
-            avg_reward += reward / n_iter;
-
+            // avg_reward += reward / n_iter;
             c++;
 
             if (c % n_steps == 0){
@@ -85,4 +85,4 @@ class RLagent{
                 values.clear();
             }
         }
-}
+};
