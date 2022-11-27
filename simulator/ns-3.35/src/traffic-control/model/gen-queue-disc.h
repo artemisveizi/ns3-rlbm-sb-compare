@@ -28,6 +28,8 @@
 #include "ns3/simulator.h"
 #include "shared-memory.h"
 
+// #include "RLAgent.h"
+
 //test for getting trace msg as pointer 
 struct RL_input_struct {
 	double time = 0;
