@@ -116,6 +116,7 @@ double nicBw;
 
 struct RL_input_struct * RL_input;
 
+//invoked when each flow finishes, get stats for each flow, calculate avg flow slowdown
 void TraceMsgFinish (struct RL_input_struct * RL_input_inmsg, double size, double start, bool incast, uint32_t prior )
 {
 	double fct, standalone_fct, slowdown;
@@ -127,11 +128,17 @@ void TraceMsgFinish (struct RL_input_struct * RL_input_inmsg, double size, doubl
 	RL_input_inmsg->fct = fct;
 	// RL_input_inmsg->standalone_fct = standalone_fct;
 	RL_input_inmsg->slowdown = slowdown;
+	//reset worst slowdown when a new interval begins 
+	if (RL_input_inmsg->reset){
+		RL_input_inmsg->worst_slowdown = 0;
+		RL_input_inmsg->reset = false;
+	}
+	RL_input_inmsg->worst_slowdown = (slowdown > RL_input_inmsg->worst_slowdown) ? slowdown : RL_input_inmsg->worst_slowdown;
 	// RL_input_inmsg->basertt = baseRTTNano / 1e3;
 	RL_input_inmsg->flowstart = (start / 1e3 - Seconds(10).GetMicroSeconds());
 	RL_input_inmsg->priority = prior;
 	RL_input_inmsg->incast = incast;
-	printf("fct: %lf\n", RL_input_inmsg->fct);
+	// printf("fct outside: %lf\n", RL_input_inmsg->fct);
 }
 
 void

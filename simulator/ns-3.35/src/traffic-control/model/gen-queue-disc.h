@@ -28,7 +28,7 @@
 #include "ns3/simulator.h"
 #include "shared-memory.h"
 
-// #include "RLAgent.h"
+#include "/repo/ns3-datacenter/simulator/ns-3.35/src/traffic-control/model/RLAgent.h"
 
 //test for getting trace msg as pointer 
 struct RL_input_struct {
@@ -37,6 +37,8 @@ struct RL_input_struct {
 	double fct = 0;
 	// double standalone_fct = 0;
 	double slowdown = 0;
+  double worst_slowdown = 0; //worst flow slowdown in one interval
+  bool reset = false; //used to reset worst slowdown for each interval. RL agent will change it to true when it reads the states/rewards
 	// double basertt = 0;
 	double flowstart = 0;
 	uint32_t priority = 0;
@@ -47,6 +49,7 @@ namespace ns3 {
 
 class GenQueueDisc : public QueueDisc {
 public:
+  RLagent rlagent;
   /**
    * \brief Get the type ID.
    * \return the object TypeId
@@ -82,8 +85,10 @@ public:
   void setNPrior(uint32_t np) {
      nPrior = np;
      alphas = new double[nPrior];
+     betas = new double[nPrior];
   }
   double *alphas;
+  double *betas;
   struct RL_input_struct * RL_input;
 
   uint32_t getNPrior() {
@@ -114,7 +119,7 @@ public:
   bool ActiveBufferManagement(uint32_t priority, Ptr<Packet> packet);
 
   bool FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet);
-  void RL_calculate_alphas(double*);
+  void RL_agent();
   void UpdateAlphas(double* new_alphas);
   void InvokeUpdates_RLB(double nanodelay);
   bool RLBuffer(uint32_t priority, Ptr<Packet> packet);

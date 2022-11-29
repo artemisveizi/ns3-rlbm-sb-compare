@@ -25,6 +25,7 @@
 #include "gen-queue-disc.h"
 #include <algorithm>
 #include <iterator>
+#include <cmath>
 
 #include "ns3/queue.h"
 #include "ns3/net-device-queue-interface.h"
@@ -35,8 +36,6 @@
 #include "ns3/custom-priority-tag.h"
 #include "ns3/unsched-tag.h"
 #include "ns3/feedback-tag.h"
-
-#include "rlbuffer-queue-disc.h"
 
 # define DT 101
 # define FAB 102
@@ -308,52 +307,85 @@ bool GenQueueDisc::FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet){
 
 }
 
-void GenQueueDisc::RL_calculate_alphas(double* new_alphas){
-  //random
-  for (uint32_t i=0; i< nPrior; i++){
-    new_alphas[i] = (double)std::rand()/(double)RAND_MAX;
+int RLBuffer_test_time = 0;
+double worst_slowdown_prev = 0;
+void GenQueueDisc::RL_agent(){
+  RL_input->reset = true;
+  RLBuffer_test_time++;
+  //TODO: sometimes there are multiple calls to InvokeUpdates for the same time stamp, don't know why. This is a workaround to ensure one timestamp is only counted once before we fix the underlying issue
+  if (RL_input->worst_slowdown != worst_slowdown_prev){
+    printf("worst slowdown: %lf, tick: %ld\n", RL_input->worst_slowdown, RLBuffer_test_time);
+    std::cout << Simulator::Now() << std::endl;
+    worst_slowdown_prev = RL_input->worst_slowdown;
+    //rewards
+    float reward[] = {-RL_input->worst_slowdown};
+    torch::Tensor reward_tensor = torch::from_blob(reward, {1});
+    rlagent.RLAgent_update(reward_tensor);
+    //Throughput?
+    //states
+    double remaining = sharedMemory->GetRemainingBuffer(); //B-Q(t)
+    //betas
+    //use states to generate alpha
+    
+    //nPrior * betas, remaining buf
+    float* state = new float[nPrior+1];
+    for (int i=0; i<nPrior; i++){
+      state[i] = betas[i];
+    }
+    state[nPrior] = remaining;
+    torch::Tensor state_tensor = torch::from_blob(state, {nPrior+1});
+    auto beta_tensor = rlagent.RLAgent_act(state_tensor);
+    for (uint32_t i=0; i< nPrior; i++){
+      // new_betas[i] = (double)std::rand()/(double)RAND_MAX;
+      betas[i] *= exp2(beta_tensor[i]);
+    }
   }
+
+
+  
+    // if (RLBuffer_test_time %50000 == 0)
+  // {
+  //   printf("fct: %lf\n", RL_input->fct);
+  //   std::cout << "alpha:";
+  //   for (int i = 0; i < nPrior; i++)
+  //   {
+  //     std::cout << " " << new_alphas[i];
+  //   }
+  //   std::cout << "\nnumber of congested queues for each priority:";
+  //   for (int i = 0; i < nPrior; i++)
+  //   {
+  //     std::cout << " " << nofP[i];
+  //   }
+  //   std::cout << "\n dequeue rate:";
+  //   for (int i = 0; i < nPrior; i++)
+  //   {
+  //     std::cout << " " << DeqRate[i];
+  //   }
+  //   std::cout << std::endl;
+  // }
+    // RLBuffer_test_time++;
 }
 
-void GenQueueDisc::UpdateAlphas(double* new_alphas){
-  for (uint32_t i=0; i< nPrior; i++){
-    alphas[i] = new_alphas[i];
-  }
-}
+// void GenQueueDisc::RL_calculate_alphas(double* new_alphas){
+//   //random
+//   for (uint32_t i=0; i< nPrior; i++){
+//     new_alphas[i] = (double)std::rand()/(double)RAND_MAX;
+//   }
+// }
 
 void GenQueueDisc::InvokeUpdates_RLB(double nanodelay){
+  nanodelay = 10000000;
   UpdateDequeueRate(nanodelay);
   UpdateNofP();
-  double* new_alphas = (double*)malloc(sizeof(double)*nPrior);
-  RL_calculate_alphas(new_alphas);
-  UpdateAlphas(new_alphas);
-  free(new_alphas);
+  // double* new_alphas = (double*)malloc(sizeof(double)*nPrior);
+  RL_agent();
+  // UpdateAlphas(new_alphas);
+  // free(new_alphas);
   Simulator::Schedule(NanoSeconds(nanodelay),&GenQueueDisc::InvokeUpdates_RLB,this,nanodelay);
 }
 
-int RLBuffer_test_time = 0;
-bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
-  if (RLBuffer_test_time %50000 == 0)
-  {
-    std::cout << "alpha:";
-    for (int i = 0; i < nPrior; i++)
-    {
-      std::cout << " " << alphas[i];
-    }
-    std::cout << "\nnumber of congested queues for each priority:";
-    for (int i = 0; i < nPrior; i++)
-    {
-      std::cout << " " << nofP[i];
-    }
-    std::cout << "\n dequeue rate:";
-    for (int i = 0; i < nPrior; i++)
-    {
-      std::cout << " " << DeqRate[i];
-    }
-    std::cout << std::endl;
-  }
-  RLBuffer_test_time++;
 
+bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
   double alpha = 1;
 
   /* A tag is attached by the end-hosts on all the packets which are unscheduled (first RTT bytes). Find the tag first.*/

@@ -35,7 +35,7 @@ class RLagent{
         // double best_avg_reward = 0.;
         // double avg_reward = 0.;
 
-        RLagent(uint n_in, uint n_out, double std) : ac(n_in, n_out, std), opt(ac->parameters(), 1e-3)
+        RLagent(uint n_in=9, uint n_out=8, double std=2e-2) : ac(n_in, n_out, std), opt(ac->parameters(), 1e-3)
         {
             ac->to(torch::kF64);
             ac->normal(0., std);
