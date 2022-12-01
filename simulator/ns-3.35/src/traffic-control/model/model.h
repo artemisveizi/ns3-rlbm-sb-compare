@@ -88,8 +88,9 @@ struct ActorCriticImpl : public torch::nn::Module
     auto log_prob(torch::Tensor action) -> torch::Tensor
     {
         // Logarithmic probability of taken action, given the current distribution.
+        // std::cout << "start log_prob\n";
         torch::Tensor var = (log_std_ + log_std_).exp();
-
+        // std::cout << "var:" << var << std::endl;
         return -((action - mu_) * (action - mu_)) / (2 * var) - log_std_ - log(sqrt(2 * M_PI));
     }
 };

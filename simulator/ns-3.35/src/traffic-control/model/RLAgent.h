@@ -35,7 +35,7 @@ class RLagent{
         // double best_avg_reward = 0.;
         // double avg_reward = 0.;
 
-        RLagent(uint n_in=9, uint n_out=8, double std=2e-2) : ac(n_in, n_out, std), opt(ac->parameters(), 1e-3)
+        RLagent(uint n_in = 4, uint n_out = 4, double std = 2e-2) : ac(n_in, n_out, std), opt(ac->parameters(), 1e-3)
         {
             ac->to(torch::kF64);
             ac->normal(0., std);
@@ -44,10 +44,15 @@ class RLagent{
         torch::Tensor RLAgent_act(torch::Tensor state)
         {
             states.push_back(state);
+            // std::cout << "state:" << state << std::endl;
             auto av = ac->forward(state);
+
             actions.push_back(std::get<0>(av));
+            // std::cout << "action:" << std::get<0>(av) << std::endl;
             values.push_back(std::get<1>(av));
+            // std::cout << "value:" << std::get<1>(av) << std::endl;
             log_probs.push_back(ac->log_prob(actions[c]));
+            // std::cout << "RLAgent_act complete" << std::endl;
 
             return actions[c];
         }

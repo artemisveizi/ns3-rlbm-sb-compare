@@ -85,7 +85,11 @@ public:
   void setNPrior(uint32_t np) {
      nPrior = np;
      alphas = new double[nPrior];
-     betas = new double[nPrior];
+     betas = new double[nPrior + 1];
+     for (int i = 0; i < nPrior + 1; i++)
+     {
+       betas[i] = 1;
+     }
   }
   double *alphas;
   double *betas;

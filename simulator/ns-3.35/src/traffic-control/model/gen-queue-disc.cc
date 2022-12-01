@@ -308,41 +308,41 @@ bool GenQueueDisc::FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet){
 }
 
 int RLBuffer_test_time = 0;
-double worst_slowdown_prev = 0;
+float worst_slowdown_prev = 0;
 void GenQueueDisc::RL_agent(){
   RL_input->reset = true;
   RLBuffer_test_time++;
   //TODO: sometimes there are multiple calls to InvokeUpdates for the same time stamp, don't know why. This is a workaround to ensure one timestamp is only counted once before we fix the underlying issue
   if (RL_input->worst_slowdown != worst_slowdown_prev){
-    printf("worst slowdown: %lf, tick: %ld\n", RL_input->worst_slowdown, RLBuffer_test_time);
+    // printf("worst slowdown: %lf, tick: %ld\n", RL_input->worst_slowdown, RLBuffer_test_time);
     std::cout << Simulator::Now() << std::endl;
     worst_slowdown_prev = RL_input->worst_slowdown;
-    //rewards
-    float reward[] = {-RL_input->worst_slowdown};
-    torch::Tensor reward_tensor = torch::from_blob(reward, {1});
-    rlagent.RLAgent_update(reward_tensor);
-    //Throughput?
     //states
-    double remaining = sharedMemory->GetRemainingBuffer(); //B-Q(t)
-    //betas
-    //use states to generate alpha
-    
-    //nPrior * betas, remaining buf
-    float* state = new float[nPrior+1];
-    for (int i=0; i<nPrior; i++){
-      state[i] = betas[i];
+    float remaining = sharedMemory->GetRemainingBuffer() / (sharedMemory->GetRemainingBuffer() + sharedMemory->GetOccupiedBuffer());
+    auto options = torch::TensorOptions().dtype(torch::kFloat64);
+    auto state_tensor = torch::empty({nPrior + 1}, options);
+    // std::cout << "nprior=" << nPrior << std::endl;
+    for (int i = 0; i < nPrior; i++)
+    {
+      state_tensor[i] = alphas[i];
     }
-    state[nPrior] = remaining;
-    torch::Tensor state_tensor = torch::from_blob(state, {nPrior+1});
+    state_tensor[nPrior] = remaining;
+    // std::cout << "state tensor=" << state_tensor << std::endl;
+    // action
     auto beta_tensor = rlagent.RLAgent_act(state_tensor);
+    // std::cout << "beta tensor=" << beta_tensor << std::endl;
+    std::vector<double> beta_vector(beta_tensor.data_ptr<double>(), beta_tensor.data_ptr<double>() + beta_tensor.numel());
     for (uint32_t i=0; i< nPrior; i++){
-      // new_betas[i] = (double)std::rand()/(double)RAND_MAX;
-      betas[i] *= exp2(beta_tensor[i]);
+      betas[i] = exp2(beta_vector[i]);
     }
+
+    // rewards
+    auto reward_tensor = torch::empty({1}, options);
+    reward_tensor[0] = -RL_input->worst_slowdown;
+    // update
+    rlagent.RLAgent_update(reward_tensor);
   }
 
-
-  
     // if (RLBuffer_test_time %50000 == 0)
   // {
   //   printf("fct: %lf\n", RL_input->fct);
@@ -387,6 +387,7 @@ void GenQueueDisc::InvokeUpdates_RLB(double nanodelay){
 
 bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
   double alpha = 1;
+  double beta;
 
   /* A tag is attached by the end-hosts on all the packets which are unscheduled (first RTT bytes). Find the tag first.*/
   bool found;
@@ -400,9 +401,11 @@ bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
   /* prioritize unscheduled packets */
   if (unsched){
     alpha = alphaUnsched;
+    beta = betas[nPrior];
   }
   else{
     alpha = alphas[priority];
+    beta = betas[priority];
   }
 
   uint64_t currentSize=GetQueueDiscClass (priority)->GetQueueDisc ()->GetNBytes();
@@ -422,7 +425,7 @@ bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
 
   double remaining = sharedMemory->GetRemainingBuffer();
   // std::cout << "alpha " << alpha << " n " << nofP[priority] << " deq " << DeqRate[priority] << std::endl;
-  uint64_t maxSize = double(alpha*(remaining)/nofP[priority])*DeqRate[priority];
+  uint64_t maxSize = double(beta * alpha * (remaining) / nofP[priority]) * DeqRate[priority];
 
   if (maxSize> UINT32_MAX)
     maxSize = UINT32_MAX-1500;
