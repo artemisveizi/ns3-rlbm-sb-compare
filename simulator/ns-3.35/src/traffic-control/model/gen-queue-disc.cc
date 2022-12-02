@@ -307,15 +307,13 @@ bool GenQueueDisc::FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet){
 
 }
 
-int RLBuffer_test_time = 0;
 float worst_slowdown_prev = 0;
 void GenQueueDisc::RL_agent(double nanodelay){
   RL_input->reset = true;
-  RLBuffer_test_time++;
   //TODO: sometimes there are multiple calls to InvokeUpdates for the same time stamp, don't know why. This is a workaround to ensure one timestamp is only counted once before we fix the underlying issue
-  if (RL_input->worst_slowdown != worst_slowdown_prev){
-    // printf("worst slowdown: %lf, tick: %ld\n", RL_input->worst_slowdown, RLBuffer_test_time);
-    std::cout << Simulator::Now() << std::endl;
+  if (abs(RL_input->worst_slowdown - worst_slowdown_prev) >0.0001){
+    // printf("worst slowdown: %lf, time: %ld\n", RL_input->worst_slowdown, RLBuffer_test_time);
+    std::cout << "worst slowdown: " << RL_input->worst_slowdown << " " <<Simulator::Now() << std::endl;
     worst_slowdown_prev = RL_input->worst_slowdown;
     //states: alphas(n), deqrate(n), remaining buffer(1), flow finish rate (1), #packet loss(1) 
     float remaining = sharedMemory->GetRemainingBuffer() / (sharedMemory->GetRemainingBuffer() + sharedMemory->GetOccupiedBuffer());
@@ -403,8 +401,7 @@ bool GenQueueDisc::RLBuffer(uint32_t priority, Ptr<Packet> packet){
   
   if (firstTimeUpdate){
     firstTimeUpdate=false;
-    // InvokeUpdates_RLB(updateInterval);
-    InvokeUpdates_RLB(1000000000);
+    InvokeUpdates_RLB(updateInterval);
   }
 
   double remaining = sharedMemory->GetRemainingBuffer();

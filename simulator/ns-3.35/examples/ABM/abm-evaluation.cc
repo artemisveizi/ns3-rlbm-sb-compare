@@ -117,7 +117,7 @@ double nicBw;
 struct RL_input_struct * RL_input;
 
 //invoked when each flow finishes, get stats for each flow, calculate avg flow slowdown
-void TraceMsgFinish (struct RL_input_struct * RL_input_inmsg, double size, double start, bool incast, uint32_t prior )
+void TraceMsgFinish (Ptr<OutputStreamWrapper> stream, struct RL_input_struct * RL_input_inmsg, double size, double start, bool incast, uint32_t prior )
 {
 	double fct, standalone_fct, slowdown;
 	fct = Simulator::Now().GetNanoSeconds() - start;
@@ -142,6 +142,19 @@ void TraceMsgFinish (struct RL_input_struct * RL_input_inmsg, double size, doubl
 	RL_input_inmsg->priority = prior;
 	RL_input_inmsg->incast = incast;
 	// printf("fct outside: %lf\n", RL_input_inmsg->fct);
+
+	//dump fct slowdown to file
+	*stream->GetStream ()
+			<< Simulator::Now().GetSeconds()
+			<< " " << size
+			<< " " << fct
+			<< " " << standalone_fct
+			<< " " << slowdown
+			<< " " << baseRTTNano / 1e3
+			<< " " << (start / 1e3 - Seconds(10).GetMicroSeconds())
+			<< " " << prior
+			<< " " << incast
+			<< std::endl;
 }
 
 void
@@ -267,7 +280,7 @@ void install_applications_incast (int incastLeaf, NodeContainer* servers, double
 				flowCount += 1;
 				sinkApp.Start (startApp);
 				sinkApp.Stop (Seconds (END_TIME));
-				sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, RL_input));
+				sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fctOutput, RL_input));
 				// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, RL_input));
 			}
 			startTime += poission_gen_interval (requestRate);
@@ -340,7 +353,7 @@ void install_applications (int txLeaf, NodeContainer* servers, double requestRat
 			flowCount += 1;
 			sinkApp.Start (Seconds(startTime));
 			sinkApp.Stop (Seconds (END_TIME));
-			sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, RL_input));
+			sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinish", MakeBoundCallback(&TraceMsgFinish, fctOutput, RL_input));
 			// sinkApp.Get(0)->TraceConnectWithoutContext("FlowFinishRL", MakeBoundCallback(&TraceMsgFinishRL, RL_input));
 			startTime += poission_gen_interval (requestRate);
 		}
