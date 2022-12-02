@@ -38,6 +38,7 @@ struct RL_input_struct {
 	// double standalone_fct = 0;
 	double slowdown = 0;
   double worst_slowdown = 0; //worst flow slowdown in one interval
+  int num_finished_flows = 0;
   bool reset = false; //used to reset worst slowdown for each interval. RL agent will change it to true when it reads the states/rewards
 	// double basertt = 0;
 	double flowstart = 0;
@@ -94,6 +95,7 @@ public:
   double *alphas;
   double *betas;
   struct RL_input_struct * RL_input;
+  int num_packet_dropped = 0;
 
   uint32_t getNPrior() {
     return nPrior;
@@ -123,7 +125,7 @@ public:
   bool ActiveBufferManagement(uint32_t priority, Ptr<Packet> packet);
 
   bool FlowAwareBuffer(uint32_t priority, Ptr<Packet> packet);
-  void RL_agent();
+  void RL_agent(double nanodelay);
   void UpdateAlphas(double* new_alphas);
   void InvokeUpdates_RLB(double nanodelay);
   bool RLBuffer(uint32_t priority, Ptr<Packet> packet);

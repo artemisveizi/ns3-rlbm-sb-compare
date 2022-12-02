@@ -124,16 +124,19 @@ void TraceMsgFinish (struct RL_input_struct * RL_input_inmsg, double size, doubl
 	standalone_fct = baseRTTNano + size * 8.0 / nicBw;
 	slowdown = fct / standalone_fct;
 	RL_input_inmsg->time = Simulator::Now().GetSeconds();
-	RL_input_inmsg->size = size;
+	// RL_input_inmsg->size = size;
 	RL_input_inmsg->fct = fct;
 	// RL_input_inmsg->standalone_fct = standalone_fct;
 	RL_input_inmsg->slowdown = slowdown;
-	//reset worst slowdown when a new interval begins 
+	//reset cumulative variables when a new interval begins 
 	if (RL_input_inmsg->reset){
 		RL_input_inmsg->worst_slowdown = 0;
+		RL_input_inmsg->num_finished_flows = 0;
 		RL_input_inmsg->reset = false;
 	}
+	//only remember biggest slowdown
 	RL_input_inmsg->worst_slowdown = (slowdown > RL_input_inmsg->worst_slowdown) ? slowdown : RL_input_inmsg->worst_slowdown;
+	RL_input_inmsg->num_finished_flows += 1;
 	// RL_input_inmsg->basertt = baseRTTNano / 1e3;
 	RL_input_inmsg->flowstart = (start / 1e3 - Seconds(10).GetMicroSeconds());
 	RL_input_inmsg->priority = prior;
