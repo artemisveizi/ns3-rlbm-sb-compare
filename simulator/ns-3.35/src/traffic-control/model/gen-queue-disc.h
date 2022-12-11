@@ -30,6 +30,9 @@
 
 #include "/repo/ns3-datacenter/simulator/ns-3.35/src/traffic-control/model/RLAgent.h"
 
+#include <stdio.h>
+#include <string>
+
 //test for getting trace msg as pointer 
 struct RL_input_struct {
 	double time = 0;
@@ -66,6 +69,12 @@ public:
   // Reasons for dropping packets
   static constexpr const char* LIMIT_EXCEEDED_DROP = "Queue disc limit exceeded";  //!< Packet dropped due to queue disc limit exceeded
 
+  void setOutputFileQueue(std::string filename)
+  {
+    outputFileName = filename;
+    isOutput = true;
+    fp = fopen(outputFileName.c_str(), "w");
+  }
 
   void setStrictPriority() {
     strict_priority = 1;
@@ -143,6 +152,8 @@ public:
 
   void TrimPacket(Ptr<Packet> packetCopy);
 
+  void writeQueueLength();
+
 private:
   virtual bool DoEnqueue (Ptr<QueueDiscItem> item);
   virtual Ptr<QueueDiscItem> DoDequeue (void);
@@ -218,8 +229,10 @@ private:
   uint64_t txBytesInt=0;
   bool enableDPPQueue;
 
-
-
+  FILE *fp;
+  bool isOutput = false;
+  std::string outputFileName;
+  long outputFlag = 0;
 };
 
 } // namespace ns3

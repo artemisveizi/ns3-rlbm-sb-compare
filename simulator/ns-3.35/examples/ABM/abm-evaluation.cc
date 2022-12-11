@@ -789,7 +789,9 @@ main (int argc, char *argv[])
 			ToRQueueDiscs[leaf].Add(queueDiscs.Get(0));
 			Ptr<GenQueueDisc> genDisc = DynamicCast<GenQueueDisc> (queueDiscs.Get (0));
 			genDisc->SetPortId(leafPortId[leaf]++);
-			switch (algorithm) {
+			// genDisc->setOutputFileQueue(fctOutFile + '.log');
+			switch (algorithm)
+			{
 			case DT:
 				genDisc->setNPrior(nPrior); // IMPORTANT. This will also trigger "alphas = new ..."
 				genDisc->setPortBw(leafServerCapacity);
@@ -895,6 +897,8 @@ main (int argc, char *argv[])
 				genDisc[1]->SetSharedMemory(sharedMemorySpine[spine]);
 				genDisc[0]->SetPortId(leafPortId[leaf]++);
 				genDisc[1]->SetPortId(spinePortId[spine]++);
+				genDisc[0]->setOutputFileQueue(fctOutFile + ".log");
+				// genDisc[1]->setOutputFileQueue(fctOutFile + '.log');
 				for (uint32_t i = 0; i < 2; i++) {
 					switch (algorithm) {
 					case DT:

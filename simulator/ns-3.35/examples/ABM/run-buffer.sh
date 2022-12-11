@@ -64,7 +64,7 @@ LATENCY=10
 #5
 LOAD=0.4
 TCP_ALGS=($DCTCP $POWERTCP)
-N_PRIO=3
+N_PRIO=8
 BURST_FREQ=2
 ALPHA_UPDATE_INT=1
 
@@ -74,25 +74,48 @@ BURST_SIZES=0.25
 BURST_SIZE=$(python3 -c "print($BURST_SIZES*$BUFFER)")
 
 
-################################################################
-# DT, ABM and IB under different Buffer Sizes. 
-# Using Cubic and DCTCP, at 40% websearch load and incast workload at Burst size of 25% of initial buffer size and request rate = 2
-###############################################################
+# for BUFFER_PER_PORT_PER_GBPS in 9.6;do
+# 	BUFFER=$(python3 -c "print(int($BUFFER_PER_PORT_PER_GBPS*1024*($SERVERS+$LINKS*$SPINES)*$SERVER_LEAF_CAP))")
+# 	for CDF in "websearch";do
+# 		CDFFILE="$DIR/$CDF.csv"
+# 		for TCP in $CUBIC ;do
+# 			for LOAD in 0.2;do
+# 				for ALG in $RLB;do
+# 					FLOW_END_TIME=13 #$(python3 -c "print(10+3*0.8/$LOAD)")
+# 					# while [[ $(( $(ps aux | grep evaluation-multi-optimized | wc -l)+$(ps aux | grep evaluation-optimized | wc -l) )) -gt $N_CORES ]];do
+# 					# 	sleep 30;
+# 					# 	echo "waiting for cores, $N running..."
+# 					# done
+# 					FLOWFILE="$DUMP_DIR/fcts-buffer-$CDF-$LOAD-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.fct"
+# 					TORFILE="$DUMP_DIR/tor-buffer-$CDF-$LOAD-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.stat"
+# 					# N=$(( $N+1 ))
+# 					(time LD_LIBRARY_PATH=/repo/libtorch/lib:$LD_LIBRARY_PATH ./waf  --run "abm-evaluation --load=$LOAD --StartTime=$START_TIME --EndTime=$END_TIME --FlowLaunchEndTime=$FLOW_END_TIME --serverCount=$SERVERS --spineCount=$SPINES --leafCount=$LEAVES --linkCount=$LINKS --spineLeafCapacity=$LEAF_SPINE_CAP --leafServerCapacity=$SERVER_LEAF_CAP --linkLatency=$LATENCY --TcpProt=$TCP --BufferSize=$BUFFER --statBuf=$STATIC_BUFFER --algorithm=$ALG --RedMinTh=$RED_MIN --RedMaxTh=$RED_MAX --request=$BURST_SIZE --queryRequestRate=$BURST_FREQ --nPrior=$N_PRIO --alphasFile=$ALPHAFILE --cdfFileName=$CDFFILE --alphaUpdateInterval=$ALPHA_UPDATE_INT --fctOutFile=$FLOWFILE --torOutFile=$TORFILE " ; echo "$FLOWFILE" )
+# 					sleep 1
+# 				done
+# 			done
+# 		done
+# 	done
+# done
 
 for BUFFER_PER_PORT_PER_GBPS in 9.6;do
 	BUFFER=$(python3 -c "print(int($BUFFER_PER_PORT_PER_GBPS*1024*($SERVERS+$LINKS*$SPINES)*$SERVER_LEAF_CAP))")
-	for ALG in $RLB ;do
-		for TCP in $CUBIC;do
-			FLOW_END_TIME=13 #$(python3 -c "print(10+3*0.8/$LOAD)")
-			while [[ $(( $(ps aux | grep evaluation-multi-optimized | wc -l)+$(ps aux | grep evaluation-optimized | wc -l) )) -gt $N_CORES ]];do
-				sleep 30;
-				echo "waiting for cores, $N running..."
+	for CDF in "websearch" "datamining" "hadoop";do
+		CDFFILE="$DIR/$CDF.csv"
+		for TCP in $CUBIC ;do
+			for LOAD in 0.2 0.4 0.6 0.8;do
+				for ALG in $ABM $RLB $DT;do
+					FLOW_END_TIME=13 #$(python3 -c "print(10+3*0.8/$LOAD)")
+					# while [[ $(( $(ps aux | grep evaluation-multi-optimized | wc -l)+$(ps aux | grep evaluation-optimized | wc -l) )) -gt $N_CORES ]];do
+					# 	sleep 30;
+					# 	echo "waiting for cores, $N running..."
+					# done
+					FLOWFILE="$DUMP_DIR/fcts-buffer-$CDF-$LOAD-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.fct"
+					TORFILE="$DUMP_DIR/tor-buffer-$CDF-$LOAD-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.stat"
+					# N=$(( $N+1 ))
+					(time LD_LIBRARY_PATH=/repo/libtorch/lib:$LD_LIBRARY_PATH ./waf  --run "abm-evaluation --load=$LOAD --StartTime=$START_TIME --EndTime=$END_TIME --FlowLaunchEndTime=$FLOW_END_TIME --serverCount=$SERVERS --spineCount=$SPINES --leafCount=$LEAVES --linkCount=$LINKS --spineLeafCapacity=$LEAF_SPINE_CAP --leafServerCapacity=$SERVER_LEAF_CAP --linkLatency=$LATENCY --TcpProt=$TCP --BufferSize=$BUFFER --statBuf=$STATIC_BUFFER --algorithm=$ALG --RedMinTh=$RED_MIN --RedMaxTh=$RED_MAX --request=$BURST_SIZE --queryRequestRate=$BURST_FREQ --nPrior=$N_PRIO --alphasFile=$ALPHAFILE --cdfFileName=$CDFFILE --alphaUpdateInterval=$ALPHA_UPDATE_INT --fctOutFile=$FLOWFILE --torOutFile=$TORFILE " ; echo "$FLOWFILE" ) &
+					sleep 1
+				done
 			done
-			FLOWFILE="$DUMP_DIR/fcts-buffer-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.fct"
-			TORFILE="$DUMP_DIR/tor-buffer-$TCP-$ALG-$BUFFER_PER_PORT_PER_GBPS.stat"
-			N=$(( $N+1 ))
-			(time LD_LIBRARY_PATH=/repo/libtorch/lib:$LD_LIBRARY_PATH ./waf --run "abm-evaluation --load=$LOAD --StartTime=$START_TIME --EndTime=$END_TIME --FlowLaunchEndTime=$FLOW_END_TIME --serverCount=$SERVERS --spineCount=$SPINES --leafCount=$LEAVES --linkCount=$LINKS --spineLeafCapacity=$LEAF_SPINE_CAP --leafServerCapacity=$SERVER_LEAF_CAP --linkLatency=$LATENCY --TcpProt=$TCP --BufferSize=$BUFFER --statBuf=$STATIC_BUFFER --algorithm=$ALG --RedMinTh=$RED_MIN --RedMaxTh=$RED_MAX --request=$BURST_SIZE --queryRequestRate=$BURST_FREQ --nPrior=$N_PRIO --alphasFile=$ALPHAFILE --cdfFileName=$CDFFILE --alphaUpdateInterval=$ALPHA_UPDATE_INT --fctOutFile=$FLOWFILE --torOutFile=$TORFILE" ; echo "$FLOWFILE")
-			sleep 10
 		done
 	done
 done

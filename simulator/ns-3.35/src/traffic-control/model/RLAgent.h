@@ -1,6 +1,7 @@
 #include "PPO.h"
 #include "model.h"
-
+#include <fstream>
+#include <stdio.h>
 // Vector of tensors.
 using VT = std::vector<torch::Tensor>;
 
@@ -34,11 +35,28 @@ class RLagent{
         // Average reward.
         // double best_avg_reward = 0.;
         // double avg_reward = 0.;
+        std::ofstream reward_log;
+        FILE *fp;
 
-        RLagent(uint n_in = 9, uint n_out = 4, double std = 2e-2) : ac(n_in, n_out, std), opt(ac->parameters(), 1e-3)
+        RLagent(uint n_in = 19, uint n_out = 9, double std = 2e-2) : ac(n_in, n_out, std), opt(ac->parameters(), 1e-3)
         {
             ac->to(torch::kF64);
             ac->normal(0., std);
+            reward_log.open("/repo/ns3-datacenter/simulator/ns-3.35/examples/ABM/reward_log.txt");
+            if (!reward_log.is_open())
+            {
+                std::cout << "cannot open file\n";
+            }
+        }
+
+        ~RLagent()
+        {
+            reward_log.close();
+        }
+
+        void write_reward(float reward)
+        {
+            reward_log << reward << '\n';
         }
 
         torch::Tensor RLAgent_act(torch::Tensor state)
