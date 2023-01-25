@@ -1,0 +1,1 @@
+docker run -v $(realpath -s ..):/repo -w /repo/ns3-datacenter/simulator/ns-3.35/examples/ABM --entrypoint bash -it rl_image
