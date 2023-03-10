@@ -45,6 +45,19 @@ In the following, `$REPO` = path to the root directory of this repository. Chang
 cd $REPO/simulator/ns-3.35/
 CXXFLAGS=-w ./waf configure --build-profile=optimized --enable-examples --disable-tests --disable-python
 ```
+
+**Configure Pytorch**
+This is specific to our project because we used a RL agent based on Pytorch code. Below is what we did to compile a Pytorch implementation together with the ns3 simulator: 
+
+First, in ./docker, build a docker image: 
+docker build -t <class>:<dockername> 
+Use command "docker images" to check if the image is successful created.
+
+Then run the docker image:
+docker run -it -v libtorch/:/repo/libtorch -v ns3-datacenter/:/repo/ns3-datacenter <class>:<dockername> bash
+
+Now you should be able to build with waf in the docker image.
+
 **Build:**
 
 ```bash
