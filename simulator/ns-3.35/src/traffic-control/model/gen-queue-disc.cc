@@ -149,20 +149,22 @@ namespace ns3
 
   bool GenQueueDisc::DynamicThresholds(uint32_t priority, Ptr<Packet> packet)
   {
-    double remaining = sharedMemory->GetRemainingBuffer();
-    uint64_t maxSize = alphas[priority] * remaining;
-    if (maxSize > UINT32_MAX)
-      maxSize = UINT32_MAX - 1500;
+	double remaining = sharedMemory->GetSharedBufferSize();//GetRemainingBuffer();
+	double all_alphas = 0;
+	for (int i = 0; i < 2; i++) { all_alphas += alphas[i]; }
+	maxSize = alphas[priority] * remaining / all_alphas;
+	if (maxSize > UINT32_MAX)
+		maxSize = UINT32_MAX - 1500;
 
-    uint32_t qSize = GetQueueDiscClass(priority)->GetQueueDisc()->GetNBytes();
-    if (((qSize + packet->GetSize()) > maxSize) || (sharedMemory->GetRemainingBuffer() < packet->GetSize()))
-    {
-      return false; // drop
-    }
-    else
-    {
-      return true;
-    }
+	uint32_t qSize = GetQueueDiscClass(priority)->GetQueueDisc()->GetNBytes();
+	if (((qSize + packet->GetSize()) > maxSize) || (sharedMemory->GetRemainingBuffer() < packet->GetSize()))
+	{
+		return false; // drop
+	}
+	else
+	{
+		return true;
+	}
   }
 
   void
@@ -257,7 +259,7 @@ namespace ns3
 
     double remaining = sharedMemory->GetRemainingBuffer();
     // std::cout << "alpha " << alpha << " n " << nofP[priority] << " deq " << DeqRate[priority] << std::endl;
-    uint64_t maxSize = double(alpha * (remaining) / nofP[priority]) * DeqRate[priority];
+    maxSize = double(alpha * (remaining) / nofP[priority]) * DeqRate[priority];
 
     if (maxSize > UINT32_MAX)
       maxSize = UINT32_MAX - 1500;
@@ -320,9 +322,10 @@ namespace ns3
     }
 
     double remaining = sharedMemory->GetRemainingBuffer();
-    uint64_t maxSize = alpha * remaining;
+    maxSize = alpha * remaining;
     if (maxSize > UINT32_MAX)
       maxSize = UINT32_MAX - 1500;
+
 
     uint32_t qSize = GetQueueDiscClass(priority)->GetQueueDisc()->GetNBytes();
     if (((qSize + packet->GetSize()) > maxSize) || (sharedMemory->GetRemainingBuffer() < packet->GetSize()))
@@ -338,6 +341,7 @@ namespace ns3
   float worst_slowdown_prev = 0;
   void GenQueueDisc::RL_agent(double nanodelay)
   {
+	// std::cout << bufferMax[1] << std::endl;
     RL_input->reset = true;
     // TODO: sometimes there are multiple calls to InvokeUpdates for the same time stamp, don't know why. This is a workaround to ensure one timestamp is only counted once before we fix the underlying issue
     if (abs(RL_input->worst_slowdown - worst_slowdown_prev) > 0.0001)
@@ -348,6 +352,10 @@ namespace ns3
       worst_slowdown_prev = RL_input->worst_slowdown;
       // states: alphas(n), deqrate(n), remaining buffer(1), flow finish rate (1), #packet loss(1)
       float remaining = (float)sharedMemory->GetRemainingBuffer() / float(sharedMemory->GetRemainingBuffer() + sharedMemory->GetOccupiedBuffer());
+
+	  // std::cout << "     RL INPUT FINISHED: " << (float)RL_input->num_finished_flows << std::endl;
+	  // std::cout << sharedMemory->GetOccupiedBuffer() << std::endl;
+
       auto options = torch::TensorOptions().dtype(torch::kFloat64);
       auto state_tensor = torch::empty({nPrior * 2 + 3}, options);
       // std::cout << "nprior=" << nPrior << std::endl;
@@ -375,12 +383,13 @@ namespace ns3
       // rewards
       auto reward_tensor = torch::empty({1}, options);
       float reward_slowdown = -log2(RL_input->worst_slowdown);
-      float reward_throughput = 0.1 * log2(1 + GetThroughputPort(nanodelay));
+      // float reward_throughput = 0.1 * log2(1 + GetThroughputPort(nanodelay));
+	  float reward_throughput = log2(1 + GetThroughputPort(nanodelay));
       if (Debug_RLbuffer)
         std::cout << "slow_down:" << reward_slowdown << "throughput" << reward_throughput << std::endl;
       reward_tensor[0] = reward_slowdown + reward_throughput;
-      // std::cout << "reward," << reward_slowdown + reward_throughput << std::endl;
-      // rlagent.write_reward(reward_slowdown + reward_throughput);
+      //std::cout << "reward," << reward_slowdown + reward_throughput << std::endl;
+      rlagent.write_reward(reward_slowdown + reward_throughput);
 
       // update
       rlagent.RLAgent_update(reward_tensor);
@@ -393,10 +402,10 @@ namespace ns3
     {
       for (int i = 0; i < nPrior; i++)
       {
-        int qSize = GetQueueDiscClass(i)->GetQueueDisc()->GetNBytes();
+        int qSize = GetQueueDiscClass(i)->GetQueueDisc()->GetNBytes() / 1000;
         fprintf(fp, "%d ", qSize);
       }
-      fprintf(fp, "\n");
+      fprintf(fp, "%d %d\n", maxSize0 / 1000, maxSize1 / 1000);
     }
   }
 
@@ -409,7 +418,7 @@ namespace ns3
 
   void GenQueueDisc::InvokeUpdates_RLB(double nanodelay)
   {
-    nanodelay = 100000000;
+    //nanodelay = 100000000; //100000000 
     UpdateDequeueRate(nanodelay);
     UpdateNofP();
     // double* new_alphas = (double*)malloc(sizeof(double)*nPrior);
@@ -465,12 +474,15 @@ namespace ns3
     double remaining = sharedMemory->GetRemainingBuffer();
     // std::cout << "alpha " << alpha << " n " << nofP[priority] << " deq " << DeqRate[priority] << std::endl;
     // uint64_t maxSize = double(beta * alpha * (remaining) / nofP[priority]) * DeqRate[priority];
-    uint64_t maxSize = beta * alpha * remaining;
+	maxSize = beta * alpha * remaining;
+	if (priority == 0) { maxSize0 = maxSize; }
+	if (priority == 1) { maxSize1 = maxSize; }
 
     if (maxSize > UINT32_MAX)
       maxSize = UINT32_MAX - 1500;
 
     uint32_t qSize = GetQueueDiscClass(priority)->GetQueueDisc()->GetNBytes();
+	// std::cout << "beta " << beta << " alpha " << alpha << " remaining " << remaining << " max size: " << maxSize << " queue size: " << qSize << std::endl;
     if (((qSize + packet->GetSize()) > maxSize) || (sharedMemory->GetRemainingBuffer() < packet->GetSize()))
     {
       num_packet_dropped++; // count dropped packets for RL agent state
@@ -739,8 +751,10 @@ namespace ns3
   double
   GenQueueDisc::GetThroughputPort(double nanodelay)
   { // delay must be in nanoseconds
-    double th = 8 * numBytesSentQueue[10] / nanodelay / portBW;
+	  double th = 8 * numBytesSentQueue[10] / nanodelay;// / portBW;
+	// std::cout << "thru " << th << " numB " << numBytesSentQueue[10] << " nano " << nanodelay << " portbw " << portBW << std::endl;
     numBytesSentQueue[10] = 0;
+
     return th;
   }
 
@@ -758,7 +772,6 @@ namespace ns3
       {
         if ((item = GetQueueDiscClass(dequeueIndex)->GetQueueDisc()->Dequeue()) != 0)
         {
-
           Ptr<Packet> packet = item->GetPacket();
 
           uint32_t p = dequeueIndex;
@@ -767,6 +780,7 @@ namespace ns3
 
           // 10 is used for aggregate. Assuming that the actual number of queues are less than 10.
           numBytesSentQueue[10] += item->GetSize();
+		  // std::cout << "RR: " << item->GetSize() << std::endl;
 
           Deq[p] += item->GetSize();
           if (GetCurrentSize().GetValue() + packet->GetSize() > staticBuffer)

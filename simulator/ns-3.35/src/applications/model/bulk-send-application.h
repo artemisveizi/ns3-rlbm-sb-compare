@@ -148,6 +148,7 @@ private:
 
   /// Traced Callback: sent packets
   TracedCallback<Ptr<const Packet> > m_txTrace;
+  TracedCallback<uint32_t> m_maxBytesSent;
 
   /// Callback for tracing the packet Tx events, includes source, destination,  the packet sent, and header
   TracedCallback<Ptr<const Packet>, const Address &, const Address &, const SeqTsSizeHeader &> m_txTraceWithSeqTsSize;

@@ -233,6 +233,11 @@ private:
   bool isOutput = false;
   std::string outputFileName;
   long outputFlag = 0;
+
+
+  uint64_t maxSize;
+  uint64_t maxSize0;
+  uint64_t maxSize1;
 };
 
 } // namespace ns3

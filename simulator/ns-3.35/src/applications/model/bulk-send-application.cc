@@ -106,6 +106,9 @@ BulkSendApplication::GetTypeId (void)
     .AddTraceSource ("TxWithSeqTsSize", "A new packet is created with SeqTsSizeHeader",
                      MakeTraceSourceAccessor (&BulkSendApplication::m_txTraceWithSeqTsSize),
                      "ns3::PacketSink::SeqTsSizeCallback")
+	.AddTraceSource ("MaxBytesSent", "MaxBytesSent sent",
+                     MakeTraceSourceAccessor (&BulkSendApplication::m_maxBytesSent),
+		             "ns3::TracedCallback")
   ;
   return tid;
 }
@@ -354,6 +357,7 @@ void BulkSendApplication::SendData (const Address &from, const Address &to)
   // Check if time to close (all sent)
   if (m_totBytes == m_maxBytes && m_connected)
     {
+	  m_maxBytesSent(m_maxBytes);
       m_socket->Close ();
       m_connected = false;
     }
